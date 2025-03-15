@@ -5,7 +5,7 @@ class HousingException(Exception):
     def __init__(self, error_massage:Exception,error_detail:sys):
         super().__init__(error_massage)
         self.error_massage=error_massage
-    @staticmethodd
+    @staticmethod
     def get_detailed_erroe_message(error_massage:Exception,error_detail:sys)->str:
         """ error_message: Exception object
         error_detail: object of sys module """
