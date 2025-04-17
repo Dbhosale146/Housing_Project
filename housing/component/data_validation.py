@@ -4,10 +4,8 @@ from housing.entity.config_entity import DataValidationConfig
 from housing.entity.artifact_entity import DataIngestionArtifact,DataValidationArtifact
 import os,sys
 import pandas  as pd
-from evidently.model_profile import Profile
-from evidently.model_profile.sections import DataDriftProfileSection
-from evidently.dashboard import Dashboard
-from evidently.dashboard.tabs import DataDriftTab
+from evidently.report import Report
+from evidently.metric_preset import DataDriftPreset
 import json
 
 class DataValidation:
@@ -33,7 +31,7 @@ class DataValidation:
 
     def is_train_test_file_exists(self)->bool:
         try:
-            logging.info("Checking if training and test file is available")
+            logging.info ("Checking if training and test file is available")
             is_train_file_exist = False
             is_test_file_exist = False
 
@@ -81,39 +79,35 @@ class DataValidation:
 
     def get_and_save_data_drift_report(self):
         try:
-            profile = Profile(sections=[DataDriftProfileSection()])
-
-            train_df,test_df = self.get_train_and_test_df()
-
-            profile.calculate(train_df,test_df)
-
-            report = json.loads(profile.json())
+            report = Report(metrics=[DataDriftPreset()])
+            train_df, test_df = self.get_train_and_test_df()
+            report.run(reference_data=train_df, current_data=test_df)
 
             report_file_path = self.data_validation_config.report_file_path
             report_dir = os.path.dirname(report_file_path)
-            os.makedirs(report_dir,exist_ok=True)
+            os.makedirs(report_dir, exist_ok=True)
 
-            with open(report_file_path,"w") as report_file:
-                json.dump(report, report_file, indent=6)
+            report.save_json(report_file_path)
+
             return report
         except Exception as e:
-            raise HousingException(e,sys) from e
+            raise HousingException(e, sys) from e
 
 
 
     def save_data_drift_report_page(self):
         try:
-            dashboard = Dashboard(tabs=[DataDriftTab()])
-            train_df,test_df = self.get_train_and_test_df()
-            dashboard.calculate(train_df,test_df)
+            report = Report(metrics=[DataDriftPreset()])
+            train_df, test_df = self.get_train_and_test_df()
+            report.run(reference_data=train_df, current_data=test_df)
 
             report_page_file_path = self.data_validation_config.report_page_file_path
             report_page_dir = os.path.dirname(report_page_file_path)
-            os.makedirs(report_page_dir,exist_ok=True)
+            os.makedirs(report_page_dir, exist_ok=True)
 
-            dashboard.save(report_page_file_path)
+            report.save_html(report_page_file_path)
         except Exception as e:
-            raise HousingException(e,sys) from e
+            raise HousingException(e, sys) from e
 
     def is_data_drift_found(self)->bool:
         try:

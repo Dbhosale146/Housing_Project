@@ -5,19 +5,22 @@ from housing.logger import logging
 from housing.entity.artifact_entity import DataIngestionArtifact
 import tarfile
 import numpy as np
-from six.moves import urllib
+import urllib.request
 import pandas as pd
 from sklearn.model_selection import StratifiedShuffleSplit
 
 class DataIngestion:
-    def __init__(self,data_ingestion_config:DataIngestionConfig):
-        try :
-            logging.info(f'{'='*20}Data Ingestion log started.{'='*20} ')
+
+    def __init__(self,data_ingestion_config:DataIngestionConfig ):
+        try:
+            logging.info(f"{'>>'*20}Data Ingestion log started.{'<<'*20} ")
             self.data_ingestion_config = data_ingestion_config
+
         except Exception as e:
-            raise HousingException(e,sys) from e
-        
-    def download_housing_data(self,):
+            raise HousingException(e,sys)
+    
+
+    def download_housing_data(self,) -> str:
         try:
             #extraction remote url to download dataset
             download_url = self.data_ingestion_config.dataset_download_url
@@ -38,23 +41,23 @@ class DataIngestion:
 
         except Exception as e:
             raise HousingException(e,sys) from e
-        
+
     def extract_tgz_file(self,tgz_file_path:str):
-            try:
-                raw_data_dir = self.data_ingestion_config.raw_data_dir
+        try:
+            raw_data_dir = self.data_ingestion_config.raw_data_dir
 
-                if os.path.exists(raw_data_dir):
-                    os.remove(raw_data_dir)
+            if os.path.exists(raw_data_dir):
+                os.remove(raw_data_dir)
 
-                os.makedirs(raw_data_dir,exist_ok=True)
+            os.makedirs(raw_data_dir,exist_ok=True)
 
-                logging.info(f"Extracting tgz file: [{tgz_file_path}] into dir: [{raw_data_dir}]")
-                with tarfile.open(tgz_file_path) as housing_tgz_file_obj:
-                    housing_tgz_file_obj.extractall(path=raw_data_dir)
-                logging.info(f"Extraction completed")
+            logging.info(f"Extracting tgz file: [{tgz_file_path}] into dir: [{raw_data_dir}]")
+            with tarfile.open(tgz_file_path) as housing_tgz_file_obj:
+                housing_tgz_file_obj.extractall(path=raw_data_dir)
+            logging.info(f"Extraction completed")
 
-            except Exception as e:
-                raise HousingException(e,sys) from e
+        except Exception as e:
+            raise HousingException(e,sys) from e
     
     def split_data_as_train_test(self) -> DataIngestionArtifact:
         try:
@@ -125,4 +128,3 @@ class DataIngestion:
 
     def __del__(self):
         logging.info(f"{'>>'*20}Data Ingestion log completed.{'<<'*20} \n\n")
-        
