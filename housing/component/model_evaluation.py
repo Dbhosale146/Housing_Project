@@ -13,13 +13,25 @@ from housing.entity.model_factory import evaluate_regression_model
 
 
 
-
 class ModelEvaluation:
+    """
+    This class handles the evaluation of a newly trained model against the existing best model.
+    It decides whether to accept or reject the new model based on performance comparison.
+    """
 
     def __init__(self, model_evaluation_config: ModelEvaluationConfig,
                  data_ingestion_artifact: DataIngestionArtifact,
                  data_validation_artifact: DataValidationArtifact,
                  model_trainer_artifact: ModelTrainerArtifact):
+        """
+        Initializes the ModelEvaluation class with config and necessary artifacts.
+
+        Parameters:
+        - model_evaluation_config: Configuration for evaluation.
+        - data_ingestion_artifact: Artifact containing paths to train/test data.
+        - data_validation_artifact: Artifact containing schema path.
+        - model_trainer_artifact: Contains path to the newly trained model and accuracy.
+        """
         try:
             logging.info(f"{'>>' * 30}Model Evaluation log started.{'<<' * 30} ")
             self.model_evaluation_config = model_evaluation_config
@@ -30,16 +42,21 @@ class ModelEvaluation:
             raise HousingException(e, sys) from e
 
     def get_best_model(self):
+        """
+        Loads the currently best-performing model from YAML report, if available.
+
+        Returns:
+        - model: Loaded model object or None if no model exists.
+        """
         try:
             model = None
             model_evaluation_file_path = self.model_evaluation_config.model_evaluation_file_path
 
             if not os.path.exists(model_evaluation_file_path):
-                write_yaml_file(file_path=model_evaluation_file_path,
-                                )
+                write_yaml_file(file_path=model_evaluation_file_path)
                 return model
-            model_eval_file_content = read_yaml_file(file_path=model_evaluation_file_path)
 
+            model_eval_file_content = read_yaml_file(file_path=model_evaluation_file_path)
             model_eval_file_content = dict() if model_eval_file_content is None else model_eval_file_content
 
             if BEST_MODEL_KEY not in model_eval_file_content:
@@ -51,11 +68,16 @@ class ModelEvaluation:
             raise HousingException(e, sys) from e
 
     def update_evaluation_report(self, model_evaluation_artifact: ModelEvaluationArtifact):
+        """
+        Updates the evaluation YAML file with the newly accepted model and saves history.
+
+        Parameters:
+        - model_evaluation_artifact: Contains the new model's path and acceptance status.
+        """
         try:
             eval_file_path = self.model_evaluation_config.model_evaluation_file_path
             model_eval_content = read_yaml_file(file_path=eval_file_path)
             model_eval_content = dict() if model_eval_content is None else model_eval_content
-            
             
             previous_best_model = None
             if BEST_MODEL_KEY in model_eval_content:
@@ -84,6 +106,16 @@ class ModelEvaluation:
             raise HousingException(e, sys) from e
 
     def initiate_model_evaluation(self) -> ModelEvaluationArtifact:
+        """
+        Executes the model evaluation pipeline:
+        - Loads new and existing models.
+        - Compares performance on train/test data.
+        - Accepts or rejects new model.
+        - Updates report if accepted.
+
+        Returns:
+        - ModelEvaluationArtifact: Result of model evaluation.
+        """
         try:
             trained_model_file_path = self.model_trainer_artifact.trained_model_file_path
             trained_model_object = load_object(file_path=trained_model_file_path)
@@ -93,22 +125,17 @@ class ModelEvaluation:
 
             schema_file_path = self.data_validation_artifact.schema_file_path
 
-            train_dataframe = load_data(file_path=train_file_path,
-                                                           schema_file_path=schema_file_path,
-                                                           )
-            test_dataframe = load_data(file_path=test_file_path,
-                                                          schema_file_path=schema_file_path,
-                                                          )
+            train_dataframe = load_data(file_path=train_file_path, schema_file_path=schema_file_path)
+            test_dataframe = load_data(file_path=test_file_path, schema_file_path=schema_file_path)
+
             schema_content = read_yaml_file(file_path=schema_file_path)
             target_column_name = schema_content[TARGET_COLUMN_KEY]
 
-            # target_column
             logging.info(f"Converting target column into numpy array.")
             train_target_arr = np.array(train_dataframe[target_column_name])
             test_target_arr = np.array(test_dataframe[target_column_name])
             logging.info(f"Conversion completed target column into numpy array.")
 
-            # dropping target column from the dataframe
             logging.info(f"Dropping target column from the dataframe.")
             train_dataframe.drop(target_column_name, axis=1, inplace=True)
             test_dataframe.drop(target_column_name, axis=1, inplace=True)
@@ -118,43 +145,54 @@ class ModelEvaluation:
 
             if model is None:
                 logging.info("Not found any existing model. Hence accepting trained model")
-                model_evaluation_artifact = ModelEvaluationArtifact(evaluated_model_path=trained_model_file_path,
-                                                                    is_model_accepted=True)
+                model_evaluation_artifact = ModelEvaluationArtifact(
+                    evaluated_model_path=trained_model_file_path,
+                    is_model_accepted=True
+                )
                 self.update_evaluation_report(model_evaluation_artifact)
                 logging.info(f"Model accepted. Model eval artifact {model_evaluation_artifact} created")
                 return model_evaluation_artifact
 
             model_list = [model, trained_model_object]
 
-            metric_info_artifact = evaluate_regression_model(model_list=model_list,
-                                                               X_train=train_dataframe,
-                                                               y_train=train_target_arr,
-                                                               X_test=test_dataframe,
-                                                               y_test=test_target_arr,
-                                                               base_accuracy=self.model_trainer_artifact.model_accuracy,
-                                                               )
+            metric_info_artifact = evaluate_regression_model(
+                model_list=model_list,
+                X_train=train_dataframe,
+                y_train=train_target_arr,
+                X_test=test_dataframe,
+                y_test=test_target_arr,
+                base_accuracy=self.model_trainer_artifact.model_accuracy
+            )
             logging.info(f"Model evaluation completed. model metric artifact: {metric_info_artifact}")
 
             if metric_info_artifact is None:
-                response = ModelEvaluationArtifact(is_model_accepted=False,
-                                                   evaluated_model_path=trained_model_file_path
-                                                   )
+                response = ModelEvaluationArtifact(
+                    is_model_accepted=False,
+                    evaluated_model_path=trained_model_file_path
+                )
                 logging.info(response)
                 return response
 
             if metric_info_artifact.index_number == 1:
-                model_evaluation_artifact = ModelEvaluationArtifact(evaluated_model_path=trained_model_file_path,
-                                                                    is_model_accepted=True)
+                model_evaluation_artifact = ModelEvaluationArtifact(
+                    evaluated_model_path=trained_model_file_path,
+                    is_model_accepted=True
+                )
                 self.update_evaluation_report(model_evaluation_artifact)
                 logging.info(f"Model accepted. Model eval artifact {model_evaluation_artifact} created")
-
             else:
                 logging.info("Trained model is no better than existing model hence not accepting trained model")
-                model_evaluation_artifact = ModelEvaluationArtifact(evaluated_model_path=trained_model_file_path,
-                                                                    is_model_accepted=False)
+                model_evaluation_artifact = ModelEvaluationArtifact(
+                    evaluated_model_path=trained_model_file_path,
+                    is_model_accepted=False
+                )
+
             return model_evaluation_artifact
         except Exception as e:
             raise HousingException(e, sys) from e
 
     def __del__(self):
+        """
+        Destructor to log the completion of model evaluation.
+        """
         logging.info(f"{'=' * 20}Model Evaluation log completed.{'=' * 20} ")

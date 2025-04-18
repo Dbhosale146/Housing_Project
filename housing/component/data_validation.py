@@ -8,11 +8,24 @@ from evidently.report import Report
 from evidently.metric_preset import DataDriftPreset
 import json
 
+
 class DataValidation:
-    
+    """
+    This class handles the validation of the dataset:
+    - Checks for the existence of training and testing files.
+    - Validates schema (column names, value types).
+    - Performs data drift analysis using the 'evidently' library.
+    """
 
     def __init__(self, data_validation_config:DataValidationConfig,
         data_ingestion_artifact:DataIngestionArtifact):
+        """
+        Initializes the DataValidation object with config and artifact paths.
+
+        Args:
+        data_validation_config (DataValidationConfig): Config for paths and report files.
+        data_ingestion_artifact (DataIngestionArtifact): Paths for train and test CSVs.
+        """
         try:
             logging.info(f"{'>>'*30}Data Valdaition log started.{'<<'*30} \n\n")
             self.data_validation_config = data_validation_config
@@ -21,6 +34,12 @@ class DataValidation:
             raise HousingException(e,sys) from e
 
     def get_train_and_test_df(self):
+        """
+        Reads the training and testing dataframes from the ingested CSV paths.
+
+        Returns:
+        Tuple of (train_df, test_df)
+        """
         try:
             train_df = pd.read_csv(self.data_ingestion_artifact.train_file_path)
             test_df = pd.read_csv(self.data_ingestion_artifact.test_file_path)
@@ -28,8 +47,13 @@ class DataValidation:
         except Exception as e:
             raise HousingException(e,sys) from e
 
-
     def is_train_test_file_exists(self)->bool:
+        """
+        Verifies whether the train and test CSV files exist in the expected location.
+
+        Returns:
+        bool: True if both files exist, else raises an exception.
+        """
         try:
             logging.info ("Checking if training and test file is available")
             is_train_file_exist = False
@@ -55,29 +79,30 @@ class DataValidation:
             return is_available
         except Exception as e:
             raise HousingException(e,sys) from e
-    
+
     def validate_dataset_schema(self)->bool:
+        """
+        Placeholder for validating schema of the dataset.
+        (To be implemented: check column names, data types, and allowed values.)
+
+        Returns:
+        bool: True (currently hardcoded)
+        """
         try:
             validation_status = False
-            
-            #Assigment validate training and testing dataset using schema file
-            #1. Number of Column
-            #2. Check the value of ocean proximity 
-            # acceptable values     <1H OCEAN
-            # INLAND
-            # ISLAND
-            # NEAR BAY
-            # NEAR OCEAN
-            #3. Check column names
-
-
+            # Assignment: validate training and testing dataset using schema file
             validation_status = True
             return validation_status 
         except Exception as e:
             raise HousingException(e,sys) from e
 
-
     def get_and_save_data_drift_report(self):
+        """
+        Uses Evidently to generate a data drift report in JSON format between train and test sets.
+
+        Returns:
+        Report object (evidently.report.Report)
+        """
         try:
             report = Report(metrics=[DataDriftPreset()])
             train_df, test_df = self.get_train_and_test_df()
@@ -93,9 +118,10 @@ class DataValidation:
         except Exception as e:
             raise HousingException(e, sys) from e
 
-
-
     def save_data_drift_report_page(self):
+        """
+        Saves the HTML version of the data drift report to the path defined in the config.
+        """
         try:
             report = Report(metrics=[DataDriftPreset()])
             train_df, test_df = self.get_train_and_test_df()
@@ -110,6 +136,12 @@ class DataValidation:
             raise HousingException(e, sys) from e
 
     def is_data_drift_found(self)->bool:
+        """
+        Triggers data drift detection and saves reports.
+
+        Returns:
+        bool: True if successful
+        """
         try:
             report = self.get_and_save_data_drift_report()
             self.save_data_drift_report_page()
@@ -117,7 +149,13 @@ class DataValidation:
         except Exception as e:
             raise HousingException(e,sys) from e
 
-    def initiate_data_validation(self)->DataValidationArtifact :
+    def initiate_data_validation(self)->DataValidationArtifact:
+        """
+        Coordinates the entire data validation process and returns a DataValidationArtifact.
+
+        Returns:
+        DataValidationArtifact
+        """
         try:
             self.is_train_test_file_exists()
             self.validate_dataset_schema()
@@ -135,11 +173,8 @@ class DataValidation:
         except Exception as e:
             raise HousingException(e,sys) from e
 
-
     def __del__(self):
+        """
+        Destructor that logs when data validation is completed.
+        """
         logging.info(f"{'>>'*30}Data Valdaition log completed.{'<<'*30} \n\n")
-        
-
-
-
-

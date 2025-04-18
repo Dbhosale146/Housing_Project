@@ -8,6 +8,10 @@ import pandas as pd
 
 
 class HousingData:
+    """
+    HousingData is a structured representation of input data for the model. 
+    It holds all features necessary to predict the housing price in California.
+    """
 
     def __init__(self,
                  longitude: float,
@@ -21,6 +25,9 @@ class HousingData:
                  ocean_proximity: str,
                  median_house_value: float = None
                  ):
+        """
+        Initializes the housing data attributes.
+        """
         try:
             self.longitude = longitude
             self.latitude = latitude
@@ -36,7 +43,10 @@ class HousingData:
             raise HousingException(e, sys) from e
 
     def get_housing_input_data_frame(self):
-
+        """
+        Converts the housing data attributes into a pandas DataFrame 
+        suitable for model prediction.
+        """
         try:
             housing_input_dict = self.get_housing_data_as_dict()
             return pd.DataFrame(housing_input_dict)
@@ -44,6 +54,9 @@ class HousingData:
             raise HousingException(e, sys) from e
 
     def get_housing_data_as_dict(self):
+        """
+        Returns housing data in dictionary format.
+        """
         try:
             input_data = {
                 "longitude": [self.longitude],
@@ -60,16 +73,25 @@ class HousingData:
             raise HousingException(e, sys)
 
 
-
 class HousingPredictor:
+    """
+    HousingPredictor loads the latest trained model and performs predictions
+    on the input DataFrame.
+    """
 
     def __init__(self, model_dir: str):
+        """
+        Initializes the predictor with the given model directory path.
+        """
         try:
             self.model_dir = model_dir
         except Exception as e:
             raise HousingException(e, sys) from e
 
     def get_latest_model_path(self):
+        """
+        Finds and returns the path of the latest model (.pkl file) in the model directory.
+        """
         try:
             # Check if model directory exists
             if not os.path.exists(self.model_dir):
@@ -96,6 +118,9 @@ class HousingPredictor:
             raise HousingException(e, sys) from e
 
     def predict(self, X):
+        """
+        Predicts the median house value using the latest model and given input features X.
+        """
         try:
             model_path = self.get_latest_model_path()
             model = load_object(file_path=model_path)
